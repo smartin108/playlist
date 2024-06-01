@@ -8,10 +8,18 @@ Also creates playlists in any subfolders using the same MO.
 2022 10 09 - First coding
 2022 11 07 - Small improvements in report out, errors are better visualized
 2023 05 05 - v_02 (Cinco De Mayo release) - collect and output a summary of exceptions, if any
+2023 11 29 - v_02.02 (29tho D'eleveno) - improve specificity of folder detection, clean up output a bit, enhance instructions
 
 Implementation instructions:
 *   create a batch file consisting of the following code and put a shortcut to the batch file in the SendTo folder:
-        python "C:/Users/Z40/Documents/Python/Playlist/PythonPlaylist.py" %*
+        python "C:/Users/<user>/Documents/Python/Playlist/PythonPlaylist.py" %*
+
+Upgrading Code
+*   if you wish to avoid editing the batch file every time you deploy,
+    *   save a versioned copy of your code
+    *   also save a copy with the name "PythonPlaylist.py" with no versioning
+    *   profit
+
 *   enjoy playlist creation on the right-click "Send To..." menu. Works on multiple folders!
 
 Known issues:
@@ -129,22 +137,22 @@ def write_playlist(path, complete_file_list):
                         if extension(file_name).lower() not in blacklist:
                             try:
                                 if folder_item.relative_path and folder_item.relative_path != '\\':
-                                    relative_path_to_write = f'{folder_item.relative_path}{file_name}'
+                                    relative_path_to_write = f'{folder_item.relative_path}'
                                     if relative_path_to_write != ascii_encoding(relative_path_to_write):
                                         warnings = True
                                         rex.add('folder contains non-ascii characters')
-                                        print(f'            ? > {folder_item.relative_path}{file_name}')
-                                        print(f'            ? > contains non-ascii characters:')
-                                        print(f'            ? > {ascii_encoding(relative_path_to_write)}\n')
+                                        print(f'            > {folder_item.relative_path}{file_name}')
+                                        print(f'            !     folder contains non-ascii characters:')
+                                        print(f'            > {ascii_encoding(relative_path_to_write)}\n')
                                     f.write(f'{relative_path_to_write}\n')
                                 else:
                                     relative_path_to_write = f'{file_name}'
                                     if relative_path_to_write != ascii_encoding(relative_path_to_write):
                                         warnings = True
                                         rex.add('file contains non-ascii characters')
-                                        print(f'            ? > {file_name}')
-                                        print(f'            ? > contains non-ascii characters:')
-                                        print(f'            ? > {ascii_encoding(relative_path_to_write)}\n')
+                                        print(f'            > {file_name}')
+                                        print(f'            !     file contains non-ascii characters:')
+                                        print(f'            > {ascii_encoding(relative_path_to_write)}\n')
                                     f.write(f'{file_name}\n')
                             except Exception as e:
                                 errors = True
