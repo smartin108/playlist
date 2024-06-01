@@ -7,11 +7,12 @@ Also creates playlists in any subfolders using the same MO.
 
 2022 10 09 - First coding
 2022 11 07 - Small improvements in report out, errors are better visualized
+2023 05 05 - v_02 (Cinco De Mayo release) - collect and output a summary of exceptions, if any
 
 Implementation instructions:
 *   create a batch file consisting of the following code and put a shortcut to the batch file in the SendTo folder:
         python "C:/Users/Z40/Documents/Python/Playlist/PythonPlaylist.py" %*
-*   enjoy playlist creation on the right-click "Sent To..." menu. Works on multiple folders!
+*   enjoy playlist creation on the right-click "Send To..." menu. Works on multiple folders!
 
 Known issues:
 *   failed conversion of unicode is unhandled
@@ -30,6 +31,19 @@ from sys import stdout
 from time import sleep
 from collections import namedtuple
 
+class RuntimeExceptions():
+    def __init__(self):
+        self.d = {}
+    def add(self, message):
+        try:
+            self.d[message] += 1
+        except KeyError:
+            self.d[message] = 1
+    def show(self):
+        return self.d
+
+
+rex = RuntimeExceptions()
 folderitem = namedtuple('folderitem', ['root_path', 'relative_path', 'files'])
 
 # files with blacklist extension are excluded from playlists if this is true:
@@ -97,13 +111,11 @@ def write_playlist(path, complete_file_list):
     def ascii_encoding(some_path):
         return some_path.encode(encoding='ascii',  errors='namereplace').decode()
 
-    # print(f'\ncfl = {complete_file_list}\n')
     errors = False
     warnings = False
     trunc_path = len(path.split('\\'))
     print(f'    writing playlists...')
     for folder_group in complete_file_list:
-        # print(f'\ni = {i}\n')
         folder_name = folder_group[0].root_path.split('\\')[-2]  # [-2] because the path terminates with '\'
         playlist_name = folder_group[0].root_path + f'{folder_name}.m3u'
         display_name = '\\'.join(playlist_name.split("\\")[trunc_path-1:])
@@ -113,7 +125,6 @@ def write_playlist(path, complete_file_list):
         try:
             with open(playlist_name, 'w') as f:
                 for folder_item in folder_group:
-                    # print(f'\nfi = {folder_item}\n')
                     for file_name in folder_item.files:
                         if extension(file_name).lower() not in blacklist:
                             try:
@@ -121,6 +132,7 @@ def write_playlist(path, complete_file_list):
                                     relative_path_to_write = f'{folder_item.relative_path}{file_name}'
                                     if relative_path_to_write != ascii_encoding(relative_path_to_write):
                                         warnings = True
+                                        rex.add('folder contains non-ascii characters')
                                         print(f'            ? > {folder_item.relative_path}{file_name}')
                                         print(f'            ? > contains non-ascii characters:')
                                         print(f'            ? > {ascii_encoding(relative_path_to_write)}\n')
@@ -129,6 +141,7 @@ def write_playlist(path, complete_file_list):
                                     relative_path_to_write = f'{file_name}'
                                     if relative_path_to_write != ascii_encoding(relative_path_to_write):
                                         warnings = True
+                                        rex.add('file contains non-ascii characters')
                                         print(f'            ? > {file_name}')
                                         print(f'            ? > contains non-ascii characters:')
                                         print(f'            ? > {ascii_encoding(relative_path_to_write)}\n')
@@ -167,13 +180,14 @@ def main():
 
 
 if __name__ == '__main__':
-    # main()
     try:
         dirty_exit_errors, dirty_exit_warnings = main()
         if dirty_exit_errors:
             print('\n!>> There were some errors. Scroll up to view.\n')
+            print(f'? > Warning summary: {rex.show()}\n')
         elif dirty_exit_warnings:
-            print('\n? > There were warnings. Scroll up to view.\n')
+            print('\n? > There were warnings. Scroll up to view.')
+            print(f'? > Warning summary: {rex.show()}\n')
         # quit(hold=True)
         quit(hold=dirty_exit_errors or dirty_exit_warnings)
     except Exception as e:
