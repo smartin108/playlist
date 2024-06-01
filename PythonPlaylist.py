@@ -9,6 +9,7 @@ Also creates playlists in any subfolders using the same MO.
 2022 11 07 - Small improvements in report out, errors are better visualized
 2023 05 05 - v_02 (Cinco De Mayo release) - collect and output a summary of exceptions, if any
 2023 11 29 - v_02.02 (29tho D'eleveno) - improve specificity of folder detection, clean up output a bit, enhance instructions
+2024 06 01 reverted change in v_02.02
 
 Implementation instructions:
 *   create a batch file consisting of the following code and put a shortcut to the batch file in the SendTo folder:
@@ -137,7 +138,7 @@ def write_playlist(path, complete_file_list):
                         if extension(file_name).lower() not in blacklist:
                             try:
                                 if folder_item.relative_path and folder_item.relative_path != '\\':
-                                    relative_path_to_write = f'{folder_item.relative_path}'
+                                    relative_path_to_write = f'{folder_item.relative_path}{file_name}'
                                     if relative_path_to_write != ascii_encoding(relative_path_to_write):
                                         warnings = True
                                         rex.add('folder contains non-ascii characters')
