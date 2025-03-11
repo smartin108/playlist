@@ -55,9 +55,15 @@ class RuntimeExceptions():
 rex = RuntimeExceptions()
 folderitem = namedtuple('folderitem', ['root_path', 'relative_path', 'files'])
 
-# files with blacklist extension are excluded from playlists if this is true:
-BLACKLIST_ACTIVE = True
-blacklist = ['m3u','txt','nfo','jpg','jpeg','png','gif','report','db','doc']
+
+def blacklist():
+    # blacklist = ['m3u','txt','nfo','jpg','jpeg','png','gif','report','db','doc']
+    return ['m3u','txt','nfo','jpg','jpeg','png','gif','report','db','doc']
+
+
+def BLACKLIST_ACTIVE():
+    # files with blacklist extension are excluded from playlists if this is true:
+    return True
 
 
 def quit(hold=False):
@@ -117,59 +123,74 @@ def get_complete_file_list(folders, files):
 
 def write_playlist(path, complete_file_list):
 
+    
     def ascii_encoding(some_path):
         return some_path.encode(encoding='ascii',  errors='namereplace').decode()
 
-    errors = False
-    warnings = False
-    trunc_path = len(path.split('\\'))
-    print(f'    writing playlists...')
-    for folder_group in complete_file_list:
+
+    def do_file_rules(folder_item, file_name):
+        if extension(file_name).lower() not in blacklist():
+            try:
+                if folder_item.relative_path and folder_item.relative_path != '\\':
+                    relative_path_to_write = f'{folder_item.relative_path}{file_name}'
+                    if relative_path_to_write != ascii_encoding(relative_path_to_write):
+                        warnings = True
+                        rex.add('folder contains non-ascii characters')
+                        print(f'            > {folder_item.relative_path}{file_name}')
+                        print(f'            !     folder contains non-ascii characters:')
+                        print(f'            > {ascii_encoding(relative_path_to_write)}\n')
+                    f.write(f'{relative_path_to_write}\n')
+                else:
+                    relative_path_to_write = f'{file_name}'
+                    if relative_path_to_write != ascii_encoding(relative_path_to_write):
+                        warnings = True
+                        rex.add('file contains non-ascii characters')
+                        print(f'            > {file_name}')
+                        print(f'            !     file contains non-ascii characters:')
+                        print(f'            > {ascii_encoding(relative_path_to_write)}\n')
+                    f.write(f'{file_name}\n')
+            except Exception as e:
+                errors = True
+                print(f'            !>> {folder_item.relative_path}{file_name}')
+                print(f'            !>> {e}\n')
+                raise
+
+
+    def write_playlist(folder_group, playlist_name):
+        try:
+            with open(playlist_name, 'w') as f:
+                for folder_item in folder_group:
+                    for file_name in folder_item.files:
+                        do_file_rules(folder_item, file_name)
+        except Exception as e:
+            errors = True
+            print(f'\n            !>> {e}\n')
+
+
+    def do_folder_loop(folder_group):
         folder_name = folder_group[0].root_path.split('\\')[-2]  # [-2] because the path terminates with '\'
         playlist_name = folder_group[0].root_path + f'{folder_name}.m3u'
         display_name = '\\'.join(playlist_name.split("\\")[trunc_path-1:])
         if len(display_name) > 100:
             display_name = display_name[:98] + '...'
         print(f'        {display_name}')
-        try:
-            with open(playlist_name, 'w') as f:
-                for folder_item in folder_group:
-                    for file_name in folder_item.files:
-                        if extension(file_name).lower() not in blacklist:
-                            try:
-                                if folder_item.relative_path and folder_item.relative_path != '\\':
-                                    relative_path_to_write = f'{folder_item.relative_path}{file_name}'
-                                    if relative_path_to_write != ascii_encoding(relative_path_to_write):
-                                        warnings = True
-                                        rex.add('folder contains non-ascii characters')
-                                        print(f'            > {folder_item.relative_path}{file_name}')
-                                        print(f'            !     folder contains non-ascii characters:')
-                                        print(f'            > {ascii_encoding(relative_path_to_write)}\n')
-                                    f.write(f'{relative_path_to_write}\n')
-                                else:
-                                    relative_path_to_write = f'{file_name}'
-                                    if relative_path_to_write != ascii_encoding(relative_path_to_write):
-                                        warnings = True
-                                        rex.add('file contains non-ascii characters')
-                                        print(f'            > {file_name}')
-                                        print(f'            !     file contains non-ascii characters:')
-                                        print(f'            > {ascii_encoding(relative_path_to_write)}\n')
-                                    f.write(f'{file_name}\n')
-                            except Exception as e:
-                                errors = True
-                                print(f'            !>> {folder_item.relative_path}{file_name}')
-                                print(f'            !>> {e}\n')
-        except Exception as e:
-            errors = True
-            print(f'\n            !>> {e}\n')
+        write_playlist(folder_group, playlist_name)
+
+
+    errors = False
+    warnings = False
+    trunc_path = len(path.split('\\'))
+    print(f'    writing playlists...')
+    for folder_group in complete_file_list:
+        do_folder_loop(folder_group)
     return errors, warnings
 
 
 def main():
     # errors = False
     print('\nPlaylist Maker')
-    if BLACKLIST_ACTIVE:
-        print(f'\n    Excluding file extensions {", ".join(sorted(blacklist))}\n')
+    if BLACKLIST_ACTIVE():
+        print(f'\n    Excluding file extensions {", ".join(sorted(blacklist()))}\n')
     try:
         paths = argv[1:]
         # paths = [r"\\NAS2021_4TB\music\Bulgarian"]
