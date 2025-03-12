@@ -44,6 +44,7 @@ class RuntimeExceptions():
     def __init__(self):
         self.d = {}
         self.t = ''
+        self.p = set()
     def add(self, message):
         try:
             self.d[message] += 1
@@ -55,6 +56,10 @@ class RuntimeExceptions():
         return self.d
     def show_text(self):
         return self.t
+    def add_path(self, path):
+        self.p.add(path)
+    def show_path(self):
+        return self.p
 
 
 rex = RuntimeExceptions()
@@ -101,6 +106,16 @@ def get_folders(root_path):
     return folders, files
 
 
+def end_path(full_path:str, depth:int=1, separator='\\'):
+    """
+    Return the rightmost segment(s) of a file path
+    """
+
+    depth += 1
+    split_path = full_path.split(separator)
+    return separator.join(split_path[-1*depth:])
+
+
 def get_complete_file_list(folders, files):
     """
     Refactors the folder and file lists and returns a custom data structure consisting of
@@ -135,26 +150,14 @@ def write_playlist(path, complete_file_list):
 
     def do_file_rules(folder_item, file_name, f):
         try:
-            # if folder_item.relative_path and folder_item.relative_path != '\\':
-            #     relative_path_to_write = f'{folder_item.relative_path}{file_name}'
-            #     if relative_path_to_write != ascii_encoding(relative_path_to_write):
-            #         warnings = True
-            #         rex.add('folder contains non-ascii characters')
-            #         print(f'            > {folder_item.relative_path}{file_name}')
-            #         print(f'            !     folder contains non-ascii characters:')
-            #         print(f'            > {ascii_encoding(relative_path_to_write)}\n')
-            #     f.write(f'{relative_path_to_write}\n')
-            # else:
-            relative_path_to_write = file_name
-            if relative_path_to_write != ascii_encoding(relative_path_to_write):
+            if file_name != ascii_encoding(file_name):
                 warnings = True
-                rex.add_text(f'{file_name}')
-                rex.add_text(f' > {ascii_encoding(relative_path_to_write)}\n')
+                rex.add_path(f'{folder_item.root_path}{folder_item.relative_path}{file_name}\n')
             f.write(f'{file_name}\n')
         except Exception as e:
             errors = True
-            rex.add_text(f'{folder_item.relative_path}{file_name}')
-            rec.add_text(f'{e}')
+            rex.add_path(f'{folder_item.root_path}{folder_item.relative_path}{file_name}\n')
+            rec.add_path(f'{e}')
             raise
 
 
@@ -166,7 +169,7 @@ def write_playlist(path, complete_file_list):
                         do_file_rules(folder_item, file_name, f)
         except Exception as e:
             errors = True
-            rex.add_text(f'{e}\n')
+            rex.add_path(f'{e}\n')
             # print(f'\n            !>> {e}\n')
 
 
@@ -215,30 +218,13 @@ def main():
 
 if __name__ == '__main__':
     dirty_exit_errors, dirty_exit_warnings = main()
-    print(rex.show_text())
+    print()
+    for i in sorted(rex.show_path()):
+        print(end_path(i))
     if dirty_exit_errors:
         print('\n!>> There were some errors. Scroll up to view.\n')
         print(f'? > Warning summary: {rex.show()}\n')
     elif dirty_exit_warnings:
         print('\n? > There were warnings. Scroll up to view.')
         print(f'? > Warning summary: {rex.show()}\n')
-    # quit(hold=True)
     quit(hold=dirty_exit_errors or dirty_exit_warnings)
-    #     quit(hold=True)    try:
-    #     dirty_exit_errors, dirty_exit_warnings = main()
-    #     if dirty_exit_errors:
-    #         print('\n!>> There were some errors. Scroll up to view.\n')
-    #         print(f'? > Warning summary: {rex.show()}\n')
-    #     elif dirty_exit_warnings:
-    #         print('\n? > There were warnings. Scroll up to view.')
-    #         print(f'? > Warning summary: {rex.show()}\n')
-    #     # quit(hold=True)
-    #     quit(hold=dirty_exit_errors or dirty_exit_warnings)
-    # except Exception as e:
-    #     _, _, tb = exc_info()
-    #     lineno = tb.tb_lineno
-    #     print('there were errors')
-    #     print(f'unhandled exception:\n{e}\n')
-    #     print(f'at line number {lineno}\n')
-    #     print(f'this script was invoked with\n{argv[1:]}\n')
-    #     quit(hold=True)
