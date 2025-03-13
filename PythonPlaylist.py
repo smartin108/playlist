@@ -31,7 +31,7 @@ Known issues:
 """
 
 from os import walk
-from os import path
+# from os import path
 from os import listdir
 from sys import exit
 from sys import argv
@@ -42,24 +42,29 @@ from collections import namedtuple
 
 class RuntimeExceptions():
     def __init__(self):
-        self.d = {}
-        self.t = ''
+        # self.d = {}
+        # self.t = ''
         self.p = set()
-    def add(self, message):
-        try:
-            self.d[message] += 1
-        except KeyError:
-            self.d[message] = 1
-    def add_text(self, message):
-        self.t += message
-    def show(self):
-        return self.d
-    def show_text(self):
-        return self.t
+    # def add(self, message):
+    #     try:
+    #         self.d[message] += 1
+    #     except KeyError:
+    #         self.d[message] = 1
+    # def add_text(self, message):
+    #     self.t += message
+    # def show(self):
+    #     return self.d
+    # def show_text(self):
+    #     return self.t
     def add_path(self, path):
         self.p.add(path)
     def show_path(self):
         return self.p
+    # def __str__(self):
+    #     t = ''
+    #     for i in self.p:
+            
+
 
 
 rex = RuntimeExceptions()
@@ -198,7 +203,7 @@ def main():
     if BLACKLIST_ACTIVE():
         print(f'\n    Excluding file extensions {", ".join(sorted(blacklist()))}\n')
     try:
-        # paths = argv[1:]
+        paths = argv[1:]
         # paths = [r"\\NAS2021_4TB\music\Bulgarian"]
         paths = [r"\\NAS2021_4TB\music\Classical"]
         # paths = [r"\\NAS2021_4TB\music\Wilco"]
@@ -208,6 +213,10 @@ def main():
         quit()
     if paths:
         for path in paths:
+            print(path)
+            print(path.split('\\'))
+            print(len(path.split('\\')))
+            exit()
             folders, files = get_folders(path)
             complete_file_list = get_complete_file_list(folders, files)
             found_errors, found_warnings = write_playlist(path, complete_file_list)
@@ -219,8 +228,7 @@ def main():
 if __name__ == '__main__':
     dirty_exit_errors, dirty_exit_warnings = main()
     print()
-    for i in sorted(rex.show_path()):
-        print(end_path(i))
+    rex.printout()
     if dirty_exit_errors:
         print('\n!>> There were some errors. Scroll up to view.\n')
         print(f'? > Warning summary: {rex.show()}\n')
