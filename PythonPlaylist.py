@@ -5,74 +5,33 @@ Playlist Maker
 Creates an m3u playlist in the target folder consisting of all media in that folder and all subfolders.
 Also creates playlists in any subfolders using the same MO.
 
-2022 10 09 - First coding
-2022 11 07 - Small improvements in report out, errors are better visualized
-2023 05 05 - v_02 (Cinco De Mayo release) - collect and output a summary of exceptions, if any
-2023 11 29 - v_02.02 (29tho D'eleveno) - improve specificity of folder detection, clean up output a bit, enhance instructions
-2024 06 01 reverted change in v_02.02
-
-Implementation instructions:
-*   create a batch file consisting of the following code and put a shortcut to the batch file in the SendTo folder:
-        python "C:/Users/<user>/Documents/Python/Playlist/PythonPlaylist.py" %*
-
-Upgrading Code
-*   if you wish to avoid editing the batch file every time you deploy,
-    *   save a versioned copy of your code
-    *   also save a copy with the name "PythonPlaylist.py" with no versioning
-    *   profit
-
-*   enjoy playlist creation on the right-click "Send To..." menu. Works on multiple folders!
-
-Known issues:
-*   failed conversion of unicode is unhandled
-*   can't create some playlists possibly because path name is too long?
-*   expects folder input only / doesn't adjust for file input (yet)
-
 """
 
-from os import walk
-# from os import path
-from os import listdir
-from sys import exit
+import os
 from sys import argv
 from sys import exc_info
 from sys import stdout
 from time import sleep
 from collections import namedtuple
 
+
 class RuntimeExceptions():
     def __init__(self):
-        # self.d = {}
-        # self.t = ''
         self.p = set()
-    # def add(self, message):
-    #     try:
-    #         self.d[message] += 1
-    #     except KeyError:
-    #         self.d[message] = 1
-    # def add_text(self, message):
-    #     self.t += message
-    # def show(self):
-    #     return self.d
-    # def show_text(self):
-    #     return self.t
     def add_path(self, path):
         self.p.add(path)
     def show_path(self):
         return self.p
-    # def __str__(self):
-    #     t = ''
-    #     for i in self.p:
-            
+    def __str__(self):
+        return str(self.p)
 
 
-
-rex = RuntimeExceptions()
 folderitem = namedtuple('folderitem', ['root_path', 'relative_path', 'files'])
+rex = RuntimeExceptions()
+
 
 
 def blacklist():
-    # blacklist = ['m3u','txt','nfo','jpg','jpeg','png','gif','report','db','doc']
     return ['m3u','txt','nfo','jpg','jpeg','png','gif','report','db','doc']
 
 
@@ -103,12 +62,17 @@ def get_folders(root_path):
     Walks the folder structure from root_path
     Returns a list of folder paths (fully qualified) and dictionary of file names (name only)
     """
-    folders = []
+    # folders = []
     files = {}
-    for root, dir_names, file_names in walk(root_path):
-        folders.append(path.join(root,''))
-        files[path.join(root,'')] = file_names
-    return folders, files
+    for root, dir_names, file_names in os.walk(root_path):
+        # folders.append(os.path.join(root,''))
+        key = os.path.join(root,'')
+        files[key] = file_names
+        # print(folders)
+        # print(files)
+        _ = input('press...')
+    return files
+    # return folders, files
 
 
 def end_path(full_path:str, depth:int=1, separator='\\'):
@@ -121,7 +85,8 @@ def end_path(full_path:str, depth:int=1, separator='\\'):
     return separator.join(split_path[-1*depth:])
 
 
-def get_complete_file_list(folders, files):
+def get_complete_file_list(files):
+# def get_complete_file_list(folders, files):
     """
     Refactors the folder and file lists and returns a custom data structure consisting of
         the fully qualified root path (for every folder)
@@ -129,12 +94,14 @@ def get_complete_file_list(folders, files):
         the list of files in that subordinate folder
     """
     complete_file_list = []
-    for base in folders:
-        base_listed = path.join(base,'').split('\\')
+    for base in files.keys():
+    # for base in folders:
+        base_listed = os.path.join(base,'').split('\\')
         base_len = len(base_listed)
         relative_file_list = []
-        for other_folder in folders:
-            other_listed = path.join(other_folder,'').split('\\')
+        for other_folder in files.keys():
+        # for other_folder in folders:
+            other_listed = os.path.join(other_folder,'').split('\\')
             other_len = len(other_listed)
             if base in other_folder:
                 relative_file_list.append(folderitem(
@@ -146,9 +113,9 @@ def get_complete_file_list(folders, files):
     return complete_file_list
 
 
-def write_playlist(path, complete_file_list):
+def write_playlist(playlist_path, complete_file_list):
 
-    
+
     def ascii_encoding(some_path):
         return some_path.encode(encoding='ascii',  errors='namereplace').decode()
 
@@ -181,45 +148,48 @@ def write_playlist(path, complete_file_list):
     def do_folder_loop(folder_group):
         folder_name = folder_group[0].root_path.split('\\')[-2]  # [-2] because the path terminates with '\'
         playlist_name = folder_group[0].root_path + f'{folder_name}.m3u'
-        display_name = '\\'.join(playlist_name.split("\\")[trunc_path-1:])
+        print(folder_group)
+        print(folder_name)
+        print(playlist_name)
+        # print(display_name)
+        exit()
+        # display_name = '\\'.join(playlist_name.split("\\")[trunc_path-1:])
         if len(display_name) > 100:
             display_name = display_name[:97] + '...'
         print(f'{display_name}')
         do_write_playlist(folder_group, playlist_name)
 
 
+
     errors = False
     warnings = False
-    trunc_path = len(path.split('\\'))
-    print(f'    writing playlists...')
+    # trunc_path = len(playlist_path.split('\\'))
+    print(f'\nWriting playlists...')
     for folder_group in complete_file_list:
         do_folder_loop(folder_group)
     return errors, warnings
 
 
 def main():
-    # errors = False
     print('\nPlaylist Maker')
     if BLACKLIST_ACTIVE():
-        print(f'\n    Excluding file extensions {", ".join(sorted(blacklist()))}\n')
+        print(f'\nExcluding file extensions {", ".join(sorted(blacklist()))}\n')
     try:
-        paths = argv[1:]
+        paths_args = argv[1:]
         # paths = [r"\\NAS2021_4TB\music\Bulgarian"]
-        paths = [r"\\NAS2021_4TB\music\Classical"]
+        # paths = [r"\\NAS2021_4TB\music\Classical"]
         # paths = [r"\\NAS2021_4TB\music\Wilco"]
         # paths = [r"\\NAS2021_4TB\music\Bulgarian\Bulgarian Voices Angelite & Huun-Huur-Tu, the"]
     except IndexError as e:
-        print(f'Syntax: MakePlaylist.py < folder | file >')
+        print(f'Syntax: MakePlaylist.py <folder|file>')
         quit()
-    if paths:
-        for path in paths:
-            print(path)
-            print(path.split('\\'))
-            print(len(path.split('\\')))
-            exit()
-            folders, files = get_folders(path)
-            complete_file_list = get_complete_file_list(folders, files)
-            found_errors, found_warnings = write_playlist(path, complete_file_list)
+    if paths_args:
+        for path_arg in paths_args:
+            files = get_folders(path_arg)
+            # folders, files = get_folders(path_arg)
+            complete_file_list = get_complete_file_list(files)
+            # complete_file_list = get_complete_file_list(folders, files)
+            found_errors, found_warnings = write_playlist(path_arg, complete_file_list)
         return found_errors, found_warnings
     else:
         return False, False
@@ -228,7 +198,7 @@ def main():
 if __name__ == '__main__':
     dirty_exit_errors, dirty_exit_warnings = main()
     print()
-    rex.printout()
+    print(rex)
     if dirty_exit_errors:
         print('\n!>> There were some errors. Scroll up to view.\n')
         print(f'? > Warning summary: {rex.show()}\n')
