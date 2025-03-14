@@ -17,15 +17,21 @@ from collections import namedtuple
 
 class RuntimeExceptions():
     def __init__(self):
-        self.p = set()
+        self.p = {}
         self.errors = False
         self.warnings = False
-    def add_path(self, path):
-        self.p.add(path)
-    # def show_path(self):4
-    #     return self.p
+    def add_path(self, user_path, path_depth=0):
+        self.p[user_path] = path_depth
     def __str__(self):
-        return str(self.p)
+        tmp = ''
+        old_header = ''
+        for k, v in self.p.items():
+            header, fileref = os.path.split(k)
+            if header != old_header:
+                tmp += f'\n{header}\n'
+                old_header = header
+            tmp += f'    {fileref}\n'
+        return tmp
 
 
 folderitem = namedtuple('folderitem', ['root_path', 'relative_path', 'files'])
@@ -33,7 +39,7 @@ rex = RuntimeExceptions()
 
 
 def blacklist():
-    return ['m3u','txt','nfo','jpg','jpeg','png','gif','report','db','doc']
+    return ['.m3u','.txt','.nfo','.jpg','.jpeg','.png','.gif','.report','.db','.doc']
 
 
 def BLACKLIST_ACTIVE():
@@ -54,19 +60,16 @@ def quit(hold=False):
     exit()
 
 
-def extension(filename):
-    return filename.split('.')[-1]
-
-
 def get_folders(root_path):
     """
     Walks the folder structure from root_path
     Returns a dictionary of file names keyed on the path
     """
     files = {}
+    duds = {}
     for root, dir_names, file_names in os.walk(root_path):
         key = os.path.join(root,'')
-        files[key] = file_names
+        files[key] = list(f for f in file_names if os.path.splitext(f)[1] not in blacklist())
     return files
 
 
@@ -95,58 +98,42 @@ def get_complete_file_list(files):
     return complete_file_list
 
 
+def ascii_encoding(some_path):
+    return some_path.encode(encoding='ascii', errors='namereplace').decode()
+
+
+def do_filename_rules(folder_item, path_depth, file_name):
+    if file_name != ascii_encoding(file_name):
+        rex.warnings = True
+        display_name = '\\'.join(os.path.join(folder_item.root_path,folder_item.relative_path,file_name).split('\\')[path_depth-1:])
+        rex.add_path(display_name, path_depth)
+
+
+def do_write_playlist(folder_group, path_depth, playlist_name):
+    with open(playlist_name, 'w', encoding='utf-8') as f:
+        for folder_item in folder_group:
+            do_filename_rules(folder_item, path_depth, folder_item.root_path)
+            for file_name in folder_item.files:
+                do_filename_rules(folder_item, path_depth, file_name)
+                f.write(f'{file_name}\n')
+
+
+def do_folder_loop(folder_group, path_depth):
+    path_as_list = folder_group[0].root_path.split('\\') 
+    folder_name = path_as_list[-2]
+    playlist_name = os.path.join(folder_group[0].root_path, folder_name) + '.m3u'
+    display_name = '\\'.join(playlist_name.split('\\')[path_depth-1:])
+    if len(display_name) > 100:
+        display_name = display_name[:87] + '...' + display_name[-10:]
+    print(f'{display_name}')
+    do_write_playlist(folder_group, path_depth, playlist_name)
+
+
 def write_playlist(playlist_path, complete_file_list):
-
-
-    def ascii_encoding(some_path):
-        return some_path.encode(encoding='ascii', errors='namereplace').decode()
-
-
-    def do_file_rules(folder_item, file_name, f):
-        try:
-            if file_name != ascii_encoding(file_name):
-                rex.warnings = True
-                print(f'folder_item.root_path: {folder_item.root_path}')
-                print(f'folder_item.relative_path: {folder_item.relative_path}')
-                print(f'file_name: {file_name}')
-                print(f'fancy? {os.path.join(folder_item.root_path,folder_item.relative_path,file_name)}\n')
-                rex.add_path(f'{folder_item.root_path}{folder_item.relative_path}{file_name}\n')
-                # rex.add_path(f'{folder_item.root_path}{folder_item.relative_path}{file_name}\n')
-            f.write(f'{file_name}\n')
-        except Exception as e:
-            rex.errors = True
-            rex.add_path(f'{folder_item.root_path}{folder_item.relative_path}{file_name}\n')
-            rex.add_path(f'{e}')
-            raise
-
-
-    def do_write_playlist(folder_group, playlist_name):
-        try:
-            with open(playlist_name, 'w') as f:
-                for folder_item in folder_group:
-                    for file_name in folder_item.files:
-                        do_file_rules(folder_item, file_name, f)
-        except Exception as e:
-            rex.errors = True
-            rex.add_path(f'{e}\n')
-
-
-    def do_folder_loop(folder_group):
-        path_as_list = folder_group[0].root_path.split('\\') 
-        folder_name = path_as_list[-2]
-        playlist_name = os.path.join(folder_group[0].root_path, folder_name) + '.m3u'
-        display_name = '\\'.join(playlist_name.split('\\')[path_depth-1:])
-        if len(display_name) > 100:
-            display_name = display_name[:87] + '...' + display_name[-10:]
-        print(f'{display_name}')
-        do_write_playlist(folder_group, playlist_name)
-
-
     path_depth = len(playlist_path.split('\\'))
     print(f'\nWriting playlists...')
     for folder_group in complete_file_list:
-        do_folder_loop(folder_group)
-    # return errors, warnings
+        do_folder_loop(folder_group, path_depth)
 
 
 def main():
@@ -166,26 +153,10 @@ def main():
         files = get_folders(path_arg)
         complete_file_list = get_complete_file_list(files)
         write_playlist(path_arg, complete_file_list)
-        # found_errors, found_warnings = write_playlist(path_arg, complete_file_list)
-    # if paths_args:
-    #     for path_arg in paths_args:
-    #         files = get_folders(path_arg)
-    #         complete_file_list = get_complete_file_list(files)
-    #         found_errors, found_warnings = write_playlist(path_arg, complete_file_list)
-    #     return found_errors, found_warnings
-    # else:
-    #     return False, False
 
 
 if __name__ == '__main__':
     main()
-    # dirty_exit_errors, dirty_exit_warnings = main()
     print()
     print(rex)
-    if rex.errors:
-        print('\n!>> There were some errors. Scroll up to view.\n')
-        print(f'? > Warning summary: {rex.show()}\n')
-    if rex.warnings:
-        print('\n? > There were warnings. Scroll up to view.')
-        print(f'? > Warning summary: {rex.show()}\n')
     quit(hold=rex.errors or rex.warnings)
