@@ -9,7 +9,7 @@ Also creates playlists in any subfolders using the same MO.
 
 import os
 from sys import argv
-from sys import exc_info
+# from sys import exc_info
 from sys import stdout
 from time import sleep
 from collections import namedtuple
@@ -18,17 +18,18 @@ from collections import namedtuple
 class RuntimeExceptions():
     def __init__(self):
         self.p = set()
+        self.errors = False
+        self.warnings = False
     def add_path(self, path):
         self.p.add(path)
-    def show_path(self):
-        return self.p
+    # def show_path(self):4
+    #     return self.p
     def __str__(self):
         return str(self.p)
 
 
 folderitem = namedtuple('folderitem', ['root_path', 'relative_path', 'files'])
 rex = RuntimeExceptions()
-
 
 
 def blacklist():
@@ -98,19 +99,24 @@ def write_playlist(playlist_path, complete_file_list):
 
 
     def ascii_encoding(some_path):
-        return some_path.encode(encoding='ascii',  errors='namereplace').decode()
+        return some_path.encode(encoding='ascii', errors='namereplace').decode()
 
 
     def do_file_rules(folder_item, file_name, f):
         try:
             if file_name != ascii_encoding(file_name):
-                warnings = True
+                rex.warnings = True
+                print(f'folder_item.root_path: {folder_item.root_path}')
+                print(f'folder_item.relative_path: {folder_item.relative_path}')
+                print(f'file_name: {file_name}')
+                print(f'fancy? {os.path.join(folder_item.root_path,folder_item.relative_path,file_name)}\n')
                 rex.add_path(f'{folder_item.root_path}{folder_item.relative_path}{file_name}\n')
+                # rex.add_path(f'{folder_item.root_path}{folder_item.relative_path}{file_name}\n')
             f.write(f'{file_name}\n')
         except Exception as e:
-            errors = True
+            rex.errors = True
             rex.add_path(f'{folder_item.root_path}{folder_item.relative_path}{file_name}\n')
-            rec.add_path(f'{e}')
+            rex.add_path(f'{e}')
             raise
 
 
@@ -121,32 +127,32 @@ def write_playlist(playlist_path, complete_file_list):
                     for file_name in folder_item.files:
                         do_file_rules(folder_item, file_name, f)
         except Exception as e:
-            errors = True
+            rex.errors = True
             rex.add_path(f'{e}\n')
 
 
     def do_folder_loop(folder_group):
-        folder_name = folder_group[0].root_path.split('\\')[-2]  # [-2] because the path terminates with '\'
+        path_as_list = folder_group[0].root_path.split('\\') 
+        folder_name = path_as_list[-2]
         playlist_name = os.path.join(folder_group[0].root_path, folder_name) + '.m3u'
-        display_name = os.path.dirname(playlist_name)
+        display_name = '\\'.join(playlist_name.split('\\')[path_depth-1:])
         if len(display_name) > 100:
             display_name = display_name[:87] + '...' + display_name[-10:]
         print(f'{display_name}')
         do_write_playlist(folder_group, playlist_name)
 
 
-    errors = False
-    warnings = False
+    path_depth = len(playlist_path.split('\\'))
     print(f'\nWriting playlists...')
     for folder_group in complete_file_list:
         do_folder_loop(folder_group)
-    return errors, warnings
+    # return errors, warnings
 
 
 def main():
     print('\nPlaylist Maker')
     if BLACKLIST_ACTIVE():
-        print(f'\nExcluding file extensions {", ".join(sorted(blacklist()))}\n')
+        print(f'\nExcluding file extensions {", ".join(sorted(blacklist()))}')
     try:
         paths_args = argv[1:]
         # paths_args = [r"\\NAS2021_4TB\music\Bulgarian"]
@@ -156,24 +162,30 @@ def main():
     except IndexError as e:
         print(f'Syntax: MakePlaylist.py <folder|file>')
         quit()
-    if paths_args:
-        for path_arg in paths_args:
-            files = get_folders(path_arg)
-            complete_file_list = get_complete_file_list(files)
-            found_errors, found_warnings = write_playlist(path_arg, complete_file_list)
-        return found_errors, found_warnings
-    else:
-        return False, False
+    for path_arg in paths_args:
+        files = get_folders(path_arg)
+        complete_file_list = get_complete_file_list(files)
+        write_playlist(path_arg, complete_file_list)
+        # found_errors, found_warnings = write_playlist(path_arg, complete_file_list)
+    # if paths_args:
+    #     for path_arg in paths_args:
+    #         files = get_folders(path_arg)
+    #         complete_file_list = get_complete_file_list(files)
+    #         found_errors, found_warnings = write_playlist(path_arg, complete_file_list)
+    #     return found_errors, found_warnings
+    # else:
+    #     return False, False
 
 
 if __name__ == '__main__':
-    dirty_exit_errors, dirty_exit_warnings = main()
+    main()
+    # dirty_exit_errors, dirty_exit_warnings = main()
     print()
     print(rex)
-    if dirty_exit_errors:
+    if rex.errors:
         print('\n!>> There were some errors. Scroll up to view.\n')
         print(f'? > Warning summary: {rex.show()}\n')
-    elif dirty_exit_warnings:
+    if rex.warnings:
         print('\n? > There were warnings. Scroll up to view.')
         print(f'? > Warning summary: {rex.show()}\n')
-    quit(hold=dirty_exit_errors or dirty_exit_warnings)
+    quit(hold=rex.errors or rex.warnings)
