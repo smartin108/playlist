@@ -21,17 +21,49 @@ class RuntimeExceptions():
         self.p = {}
         self.errors = False
         self.warnings = False
-    def add_path(self, user_path, path_depth=0):
-        self.p[user_path] = path_depth
+    def add_path(self, user_path, path_depth, positions, descriptions):
+        self.p[user_path] = [path_depth, positions, descriptions]
     def __str__(self):
+        """
+        Format the exceptions nicely
+        """
         tmp = ''
         old_header = ''
         for k, v in self.p.items():
+
+            """
+            <header> is dirpath rooted at the folder where the script was
+            invoked
+            """
             header, fileref = os.path.split(k)
             if header != old_header:
                 tmp += f'\n{header}\n'
                 old_header = header
+
+            """
+            Each filename is indented under its dirpath
+            """
             tmp += f'    {fileref}\n'
+
+            """
+            Now we mark the positions of the errant characters
+            """
+            positions = v[1]
+            descriptions = v[2]
+            if positions:
+                tmpline = ''
+                for i in range(len(positions)):
+                    tmpline += f'{" "*(positions[i]-1)}{str(i+1)}'
+                tmp += f'     {tmpline}\n'
+
+            """
+            Finally, list the unicode character names that were discovered
+            """
+            if descriptions:
+                for i in range(len(descriptions)):
+                    tmp += f'        {i+1} > {descriptions[i]}\n'
+
+            tmp += '\n'
         return tmp
 
 
@@ -99,56 +131,62 @@ def get_complete_file_list(files):
     return complete_file_list
 
 
+def locate_non_ascii(ascii_ified_text, original_text=None):
+    """
+    If <ascii_ified_text> contains the results of 
+        original_text.encode(errors='namereplace')   ,
+    then this will return the replacement text and their character locations 
+    with respect to <original_text>
+
+    It's not necessary to provide <original_text>
+    """
+    pattern = r"[\\][N](\{.*?\})"
+    matches = re.finditer(pattern, ascii_ified_text)
+    positions = []
+    descriptions = []
+    prior_end = 0
+
+    # <match> is the verbose description of a non-ascii character
+
+    for match in matches:
+        descriptions.append(match.group(1))
+        if positions:
+            """
+            <positions> includes the space taken up by the replacement 
+            text, so we subtract out the accumlated lengths of the 
+            replacement text in order to know the positions of the 
+            non-ascii characters in <original_text>
+            """
+            width = match.end() - match.start()
+            positions.append(match.start() - prior_end + 1)
+            prior_end = match.end()
+        else:
+            positions.append(match.start())
+            prior_end = match.end()
+    return positions, descriptions
+
+
 def ascii_encoding(some_path):
-
-
-    def locate_non_ascii(original_name, ascii_ified_name):
-        """
-        If ascii_ified_name contains the results of 
-        original_name.encode(errors='namereplace'), then this will return the 
-        replacement text and their character locations withiwith respect to 
-        original_name
-        """
-        pattern = r"[\\][N](\{.*?\})"
-        matches = re.finditer(pattern, ascii_ified_name)
-        positions = []
-        descriptions = []
-        prior_end = 0
-
-        # <match> is the verbose description of a non-ascii character
-        for match in matches:
-            # print(f'{match.start(), match.end(), match.group(1)}')
-            descriptions.append(match.group(1))
-            if positions:
-                positions.append(match.start()-(prior_end-positions[-1])+1)
-                prior_end = match.end()
-            else:
-                positions.append(match.start())
-                prior_end = match.end()
-        return positions, descriptions
-
+    positions = None
+    descriptions = None
     ascii_value = some_path.encode(encoding='ascii', errors='namereplace').decode()
     if ascii_value != some_path:
-        # print()
-        # print('encoding results')
-        # print('0                                                 0                                                           1         1')
+        positions, descriptions = locate_non_ascii(ascii_value)
         # print('0         1         2         3         4         5         6         7         8         9         0         1         2')
         # print('0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890')
         # print(some_path)
-        # print(some_path.encode(encoding='ascii', errors='replace').decode())
-        # print(ascii_value)
-        # print(locate_non_ascii(some_path, ascii_value))
-        positions, descriptions = locate_non_ascii(some_path, ascii_value)
         # print(positions)
         # print(descriptions)
-    return ascii_value
+        # print()
+    return ascii_value, positions, descriptions
 
 
 def do_filename_rules(folder_item, path_depth, file_name):
-    if file_name != ascii_encoding(file_name):
+    ascii_name, positions, descriptions = ascii_encoding(file_name)
+    if file_name != ascii_name:
         rex.warnings = True
         display_name = '\\'.join(os.path.join(folder_item.root_path,folder_item.relative_path,file_name).split('\\')[path_depth-1:])
-        rex.add_path(display_name, path_depth)
+        rex.add_path(display_name, path_depth, positions, descriptions)
 
 
 def do_write_playlist(folder_group, path_depth, playlist_name):
@@ -185,7 +223,8 @@ def main():
     try:
         paths_args = argv[1:]
         # paths_args = [r"\\NAS2021_4TB\music\Bulgarian"]
-        paths_args = [r"\\NAS2021_4TB\music\Classical"]
+        # paths_args = [r"\\NAS2021_4TB\music\Classical"]
+        # paths_args = [r"\\NAS2021_4TB\music\Classical\Giacomo Puccini"]
         # paths_args = [r"\\NAS2021_4TB\music\Wilco"]
         # paths_args = [r"\\NAS2021_4TB\music\Bulgarian\Bulgarian Voices Angelite & Huun-Huur-Tu, the"]
     except IndexError as e:
