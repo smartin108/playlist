@@ -19,10 +19,14 @@ from collections import namedtuple
 class RuntimeExceptions():
     def __init__(self):
         self.p = {}
+        self.f = {}
         self.errors = False
         self.warnings = False
-    def add_path(self, user_path, path_depth, positions, descriptions):
-        self.p[user_path] = [path_depth, positions, descriptions]
+    def add_path(self, user_path, path_depth, positions, descriptions, is_folder=False):
+        if is_folder:
+            print(f'is_folder: {user_path}\n{path_depth}\n{positions}\n{descriptions}')
+        else:
+            self.p[user_path] = [path_depth, positions, descriptions]
     def __str__(self):
         """
         Format the exceptions nicely
@@ -181,18 +185,30 @@ def ascii_encoding(some_path):
     return ascii_value, positions, descriptions
 
 
-def do_filename_rules(folder_item, path_depth, file_name):
+def do_filename_rules(folder_item, path_depth, file_name, is_folder=False):
     ascii_name, positions, descriptions = ascii_encoding(file_name)
     if file_name != ascii_name:
+        print(f'ascii fail: is_folder={is_folder} {file_name}')
         rex.warnings = True
         display_name = '\\'.join(os.path.join(folder_item.root_path,folder_item.relative_path,file_name).split('\\')[path_depth-1:])
-        rex.add_path(display_name, path_depth, positions, descriptions)
+        rex.add_path(display_name, path_depth, positions, descriptions, is_folder)
+        # if is_folder:
+        #     print()
+        #     print(file_name)
+        #     print(ascii_name)
+        #     print(display_name)
+        #     print(positions)
+        #     print(descriptions)
+        #     _ = input('press...')
 
 
 def do_write_playlist(folder_group, path_depth, playlist_name):
     with open(playlist_name, 'w', encoding='utf-8') as f:
         for folder_item in folder_group:
-            do_filename_rules(folder_item, path_depth, folder_item.root_path)
+            # print(f'path_depth: {path_depth}')
+            folder_depth = len(playlist_name.split("\\"))
+            # print(f'folder_depth: {folder_depth}')
+            do_filename_rules(folder_item, path_depth, folder_item.root_path, is_folder=True)
             for file_name in folder_item.files:
                 do_filename_rules(folder_item, path_depth, file_name)
                 f.write(f'{file_name}\n')
