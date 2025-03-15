@@ -11,6 +11,7 @@ import os
 from sys import argv
 # from sys import exc_info
 from sys import stdout
+import re
 from time import sleep
 from collections import namedtuple
 
@@ -99,7 +100,32 @@ def get_complete_file_list(files):
 
 
 def ascii_encoding(some_path):
-    return some_path.encode(encoding='ascii', errors='namereplace').decode()
+
+
+    def locate_non_ascii(original_name, ascii_ified_name):
+        """
+        If ascii_ified_name contains the results of 
+        original_name.encode(errors='namereplace'), then this will return the 
+        replacement text and their character locations withiwith respect to 
+        original_name
+        """
+        # start_markers = [r'\N']
+        # end_markers = '}'
+        # chars = re.finditer(r'.*(\\N.*\})', ascii_ified_name)
+        pattern = r"\N{.*}"
+        for char in re.finditer(pattern, ascii_ified_name):
+            print(f'{char.start(), char.end(), char.group(0)}')
+        return char
+
+    ascii_value = some_path.encode(encoding='ascii', errors='namereplace').decode()
+    if ascii_value != some_path:
+        print()
+        print('encoding results')
+        print(some_path)
+        print(some_path.encode(encoding='ascii', errors='replace').decode())
+        print(ascii_value)
+        print(locate_non_ascii(some_path, ascii_value))
+    return ascii_value
 
 
 def do_filename_rules(folder_item, path_depth, file_name):
