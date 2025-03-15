@@ -109,22 +109,38 @@ def ascii_encoding(some_path):
         replacement text and their character locations withiwith respect to 
         original_name
         """
-        # start_markers = [r'\N']
-        # end_markers = '}'
-        # chars = re.finditer(r'.*(\\N.*\})', ascii_ified_name)
-        pattern = r"\N{.*}"
-        for char in re.finditer(pattern, ascii_ified_name):
-            print(f'{char.start(), char.end(), char.group(0)}')
-        return char
+        pattern = r"[\\][N](\{.*?\})"
+        matches = re.finditer(pattern, ascii_ified_name)
+        positions = []
+        descriptions = []
+        prior_end = 0
+
+        # <match> is the verbose description of a non-ascii character
+        for match in matches:
+            # print(f'{match.start(), match.end(), match.group(1)}')
+            descriptions.append(match.group(1))
+            if positions:
+                positions.append(match.start()-(prior_end-positions[-1])+1)
+                prior_end = match.end()
+            else:
+                positions.append(match.start())
+                prior_end = match.end()
+        return positions, descriptions
 
     ascii_value = some_path.encode(encoding='ascii', errors='namereplace').decode()
     if ascii_value != some_path:
-        print()
-        print('encoding results')
-        print(some_path)
-        print(some_path.encode(encoding='ascii', errors='replace').decode())
-        print(ascii_value)
-        print(locate_non_ascii(some_path, ascii_value))
+        # print()
+        # print('encoding results')
+        # print('0                                                 0                                                           1         1')
+        # print('0         1         2         3         4         5         6         7         8         9         0         1         2')
+        # print('0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890')
+        # print(some_path)
+        # print(some_path.encode(encoding='ascii', errors='replace').decode())
+        # print(ascii_value)
+        # print(locate_non_ascii(some_path, ascii_value))
+        positions, descriptions = locate_non_ascii(some_path, ascii_value)
+        # print(positions)
+        # print(descriptions)
     return ascii_value
 
 
