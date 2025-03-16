@@ -29,7 +29,8 @@ class RuntimeExceptions():
 
     def add_path(self, user_path, path_depth, positions, descriptions, is_folder=False):
         if is_folder:
-            print(f'is_folder: {user_path}\n{path_depth}\n{positions}\n{descriptions}')
+            # print(f'is_folder: {user_path}\n{path_depth}\n{positions}\n{descriptions}')
+            self.p[user_path] = [path_depth, positions, descriptions]
         else:
             self.p[user_path] = [path_depth, positions, descriptions]
 
@@ -86,28 +87,67 @@ class FileNameParser():
         self.path_as_list = self.full_path.split('/')
         self.segments = len(self.path_as_list)
         self.invocation_depth = invocation_depth
-        self.full_directory = '/'.join(self.path_as_list[:self.segments-2])
-        self.current_directoy = self.full_directory[-1]
+        self.full_directory = '/'.join(self.path_as_list[:self.segments-1])
+        if self.isdir():
+            self.current_directory = self.path_as_list[-2]
+        else:
+            self.current_directory = self.path_as_list[-1]
         self.stem, self.suffix = os.path.split(self.full_path)
+
+
+    def path_from_level(self, level:int):
+        return os.path.join(self.path_as_list[level:])
+
+
+    def path_to_level(self, level:int):
+        return os.path.join(self.path_as_list[:level])
+
+
+    def isdir(self):
+        return os.path.isdir(self.full_path)
+
+
+    def isfile(self):
+        return os.path.isfile(self.full_path)
 
 
     def __repr__(self):
         return path_item(\
-            self.full_path,
+            os.path.join(self.full_path),
+            self.isdir(),
+            self.isfile(),
             self.path_as_list,
             self.segments,
             self.invocation_depth,
-            self.full_directory,
-            self.current_directoy,
+            os.path.join(self.full_directory),
+            self.current_directory,
             self.stem,
             self.suffix
             )
 
 
+    def __str__(self):
+        return str(path_item(\
+            os.path.join(self.path_as_list),
+            self.isdir(),
+            self.isfile(),
+            self.path_as_list,
+            self.segments,
+            self.invocation_depth,
+            os.path.join(self.path_as_list),
+            self.current_directory,
+            self.stem,
+            self.suffix
+            ))
+
+
 folderitem = namedtuple('folderitem', ['root_path', 'relative_path', 'files'])
 path_item = namedtuple('path_item', [
     'full_path', 
+    'isdir',
+    'isfile',
     'path_as_list', 
+    'segments',
     'invocation_depth', 
     'full_directory',
     'current_directory', 
@@ -126,6 +166,10 @@ def BLACKLIST_ACTIVE():
     return True
 
 
+def pause():
+    _ = input('press Enter...')
+
+
 def quit(hold=False):
     if hold:
         input('\nPress Enter to exit...')
@@ -137,47 +181,6 @@ def quit(hold=False):
             stdout.flush()
             sleep(1)
     exit()
-
-
-def get_folders(root_path):
-    """
-    Walks the folder structure from root_path
-    Returns a dictionary of file names keyed on the path
-    """
-    files = {}
-    duds = {}
-    for root, dir_names, file_names in os.walk(root_path):
-        key = os.path.join(root,'')
-        if BLACKLIST_ACTIVE():
-            files[key] = list(f for f in file_names if os.path.splitext(f)[1] not in blacklist())
-        else:
-            files[key] = list(f for f in file_names)
-    return files
-
-
-def get_complete_file_list(files):
-    """
-    Refactors the folder and file lists and returns a custom data structure consisting of
-        the fully qualified root path (for every folder)
-        the relative path of every subordinate folder
-        the list of files in that subordinate folder
-    """
-    complete_file_list = []
-    for base in files.keys():
-        base_as_list = os.path.join(base,'').split('\\')
-        base_len = len(base_as_list)
-        relative_file_list = []
-        for other_folder in files.keys():
-            other_as_list = os.path.join(other_folder,'').split('\\')
-            other_len = len(other_as_list)
-            if base in other_folder:
-                relative_file_list.append(folderitem(
-                    root_path=base, 
-                    relative_path='\\'.join(other_as_list[-(other_len-base_len+1):]), 
-                    files=files[other_folder]))
-        if relative_file_list:
-            complete_file_list.append(relative_file_list)
-    return complete_file_list
 
 
 def locate_non_ascii(ascii_ified_text, original_text=None):
@@ -215,36 +218,29 @@ def locate_non_ascii(ascii_ified_text, original_text=None):
     return positions, descriptions
 
 
-def ascii_encoding(some_path):
+def ascii_encoding(some_path, path_depth, is_folder):
     positions = None
     descriptions = None
+    pobj = FileNameParser(some_path, path_depth)
+    if is_folder:
+        some_path = pobj.path_as_list[path_depth]
     ascii_value = some_path.encode(encoding='ascii', errors='namereplace').decode()
     if ascii_value != some_path:
         positions, descriptions = locate_non_ascii(ascii_value)
-        # print('0         1         2         3         4         5         6         7         8         9         0         1         2')
-        # print('0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890')
-        # print(some_path)
-        # print(positions)
-        # print(descriptions)
-        # print()
+        print(str(pobj))
+        print(some_path)
+        print(positions, descriptions)
     return ascii_value, positions, descriptions
 
 
 def do_filename_rules(folder_item, path_depth, file_name, is_folder=False):
-    ascii_name, positions, descriptions = ascii_encoding(file_name)
+    ascii_name, positions, descriptions = ascii_encoding(file_name, path_depth, is_folder)
     if file_name != ascii_name:
-        print(f'ascii fail: is_folder={is_folder} {file_name}')
         rex.warnings = True
         display_name = '\\'.join(os.path.join(folder_item.root_path,folder_item.relative_path,file_name).split('\\')[path_depth-1:])
+        # print(f'ascii fail: is_folder={is_folder} {file_name}')
+        # print(display_name)
         rex.add_path(display_name, path_depth, positions, descriptions, is_folder)
-        # if is_folder:
-        #     print()
-        #     print(file_name)
-        #     print(ascii_name)
-        #     print(display_name)
-        #     print(positions)
-        #     print(descriptions)
-        #     _ = input('press...')
 
 
 def do_write_playlist(folder_group, path_depth, playlist_name):
@@ -254,14 +250,30 @@ def do_write_playlist(folder_group, path_depth, playlist_name):
             do_filename_rules(folder_item, path_depth, folder_item.root_path, is_folder=True)
             for file_name in folder_item.files:
                 do_filename_rules(folder_item, path_depth, file_name)
-                f.write(f'{file_name}\n')
+                if folder_item.relative_path and folder_item.relative_path != '\\':
+                    relative_path_to_write = os.path.join(folder_item.relative_path, file_name)
+                    f.write(f'{relative_path_to_write}\n')
+                else:
+                    relative_path_to_write = f'{file_name}'
+                    f.write(f'{file_name}\n')
 
 
 def do_folder_loop(folder_group, path_depth):
+    pobj = FileNameParser(folder_group[0].root_path, path_depth)
+    print(pobj)
+
     path_as_list = folder_group[0].root_path.split('\\') 
+    print(path_as_list)
+
     folder_name = path_as_list[-2]
+    print(folder_name)
+
     playlist_name = os.path.join(folder_group[0].root_path, folder_name) + '.m3u'
-    display_name = '\\'.join(playlist_name.split('\\')[path_depth-1:])
+    print(playlist_name)
+
+    pause()
+    
+    display_name = '\\'.join(playlist_name.split('\\')[path_depth:])
     if len(display_name) > 100:
         display_name = display_name[:87] + '...' + display_name[-10:]
     print(f'{display_name}')
@@ -269,10 +281,56 @@ def do_folder_loop(folder_group, path_depth):
 
 
 def write_playlist(playlist_path, complete_file_list):
-    path_depth = len(playlist_path.split('\\'))
+    """
+    path_depth will be the index into (full path as list) where the 
+    script was invoked
+    """
+    path_depth = len(playlist_path.split('\\')) - 1
     print(f'\nWriting playlists...')
     for folder_group in complete_file_list:
         do_folder_loop(folder_group, path_depth)
+
+
+def get_complete_file_list(files):
+    """
+    Refactors the folder and file lists and returns a custom data structure 
+    consisting of the fully qualified root path (for every folder) the 
+    relative path of every subordinate folder the list of files in that 
+    subordinate folder
+    """
+    complete_file_list = []
+    for base in files.keys():
+        base_as_list = os.path.join(base,'').split('\\')
+        base_len = len(base_as_list)
+        relative_file_list = []
+        for other_folder in files.keys():
+            other_as_list = os.path.join(other_folder,'').split('\\')
+            other_len = len(other_as_list)
+            if base in other_folder:
+                relative_file_list.append(folderitem(
+                    root_path=base, 
+                    relative_path='\\'.join(other_as_list[-(other_len-base_len+1):]), 
+                    files=files[other_folder]))
+        if relative_file_list:
+            complete_file_list.append(relative_file_list)
+    return complete_file_list
+
+
+def get_folders(root_path):
+    """
+    Walks the folder structure from root_path
+    Returns a dictionary of file names keyed on the path
+    """
+    files = {}
+    for root, dir_names, file_names in os.walk(root_path):
+        key = os.path.join(root,'')
+        if BLACKLIST_ACTIVE():
+            files[key] = list(\
+                f for f in file_names \
+                if os.path.splitext(f)[1] not in blacklist())
+        else:
+            files[key] = list(f for f in file_names)
+    return files
 
 
 def main():
@@ -291,11 +349,7 @@ def main():
         quit()
     for path_arg in paths_args:
         files = get_folders(path_arg)
-        pprint.pp(files, width=180)
-        _ = input('press...')
         complete_file_list = get_complete_file_list(files)
-        pprint.pp(complete_file_list, width=180)
-        _ = input('press...')
         write_playlist(path_arg, complete_file_list)
 
 
