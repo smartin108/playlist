@@ -14,19 +14,26 @@ from sys import stdout
 import re
 from time import sleep
 from collections import namedtuple
+import pprint
 
 
 class RuntimeExceptions():
+
+
     def __init__(self):
         self.p = {}
         self.f = {}
         self.errors = False
         self.warnings = False
+
+
     def add_path(self, user_path, path_depth, positions, descriptions, is_folder=False):
         if is_folder:
             print(f'is_folder: {user_path}\n{path_depth}\n{positions}\n{descriptions}')
         else:
             self.p[user_path] = [path_depth, positions, descriptions]
+
+
     def __str__(self):
         """
         Format the exceptions nicely
@@ -71,7 +78,42 @@ class RuntimeExceptions():
         return tmp
 
 
+class FileNameParser():
+
+
+    def __init__(self, full_path, invocation_depth):
+        self.full_path = full_path.replace('\\','/')
+        self.path_as_list = self.full_path.split('/')
+        self.segments = len(self.path_as_list)
+        self.invocation_depth = invocation_depth
+        self.full_directory = '/'.join(self.path_as_list[:self.segments-2])
+        self.current_directoy = self.full_directory[-1]
+        self.stem, self.suffix = os.path.split(self.full_path)
+
+
+    def __repr__(self):
+        return path_item(\
+            self.full_path,
+            self.path_as_list,
+            self.segments,
+            self.invocation_depth,
+            self.full_directory,
+            self.current_directoy,
+            self.stem,
+            self.suffix
+            )
+
+
 folderitem = namedtuple('folderitem', ['root_path', 'relative_path', 'files'])
+path_item = namedtuple('path_item', [
+    'full_path', 
+    'path_as_list', 
+    'invocation_depth', 
+    'full_directory',
+    'current_directory', 
+    'stem',
+    'suffix'
+    ])
 rex = RuntimeExceptions()
 
 
@@ -106,7 +148,10 @@ def get_folders(root_path):
     duds = {}
     for root, dir_names, file_names in os.walk(root_path):
         key = os.path.join(root,'')
-        files[key] = list(f for f in file_names if os.path.splitext(f)[1] not in blacklist())
+        if BLACKLIST_ACTIVE():
+            files[key] = list(f for f in file_names if os.path.splitext(f)[1] not in blacklist())
+        else:
+            files[key] = list(f for f in file_names)
     return files
 
 
@@ -205,9 +250,7 @@ def do_filename_rules(folder_item, path_depth, file_name, is_folder=False):
 def do_write_playlist(folder_group, path_depth, playlist_name):
     with open(playlist_name, 'w', encoding='utf-8') as f:
         for folder_item in folder_group:
-            # print(f'path_depth: {path_depth}')
             folder_depth = len(playlist_name.split("\\"))
-            # print(f'folder_depth: {folder_depth}')
             do_filename_rules(folder_item, path_depth, folder_item.root_path, is_folder=True)
             for file_name in folder_item.files:
                 do_filename_rules(folder_item, path_depth, file_name)
@@ -248,7 +291,11 @@ def main():
         quit()
     for path_arg in paths_args:
         files = get_folders(path_arg)
+        pprint.pp(files, width=180)
+        _ = input('press...')
         complete_file_list = get_complete_file_list(files)
+        pprint.pp(complete_file_list, width=180)
+        _ = input('press...')
         write_playlist(path_arg, complete_file_list)
 
 
