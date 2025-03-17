@@ -15,6 +15,7 @@ import re
 from time import sleep
 from collections import namedtuple
 import pprint
+from clsPathParser import PathParser
 
 
 class RuntimeExceptions():
@@ -29,7 +30,6 @@ class RuntimeExceptions():
 
     def add_path(self, user_path, path_depth, positions, descriptions, is_folder=False):
         if is_folder:
-            # print(f'is_folder: {user_path}\n{path_depth}\n{positions}\n{descriptions}')
             self.p[user_path] = [path_depth, positions, descriptions]
         else:
             self.p[user_path] = [path_depth, positions, descriptions]
@@ -79,81 +79,83 @@ class RuntimeExceptions():
         return tmp
 
 
-class FileNameParser():
+# class PathParser():
 
 
-    def __init__(self, full_path, invocation_depth):
-        self.full_path = full_path.replace('\\','/')
-        self.path_as_list = self.full_path.split('/')
-        self.segments = len(self.path_as_list)
-        self.invocation_depth = invocation_depth
-        self.full_directory = '/'.join(self.path_as_list[:self.segments-1])
-        if self.isdir():
-            self.current_directory = self.path_as_list[-2]
-        else:
-            self.current_directory = self.path_as_list[-1]
-        self.stem, self.suffix = os.path.split(self.full_path)
+#     def __init__(self, full_path, invocation_depth=None):
+#         self.full_path = full_path.replace('\\','/')
+#         self.path_as_list = self.full_path.split('/')
+#         self.segments = len(self.path_as_list)
+#         self.invocation_depth = invocation_depth
+#         self.full_directory = '/'.join(self.path_as_list[:self.segments-1])
+#         if self.isdir():
+#             self.current_directory = self.path_as_list[-2]
+#         else:
+#             self.current_directory = self.path_as_list[-1]
+#         self.stem, self.suffix = os.path.split(self.full_path)
 
 
-    def path_from_level(self, level:int):
-        return os.path.join(self.path_as_list[level:])
+#     def path_from_level(self, level:int):
+#         return os.path.join(*self.path_as_list[level:])
 
 
-    def path_to_level(self, level:int):
-        return os.path.join(self.path_as_list[:level])
+#     def path_to_level(self, level:int):
+#         return os.path.join(*self.path_as_list[:level])
 
 
-    def isdir(self):
-        return os.path.isdir(self.full_path)
+#     def isdir(self):
+#         return os.path.isdir(self.full_path)
 
 
-    def isfile(self):
-        return os.path.isfile(self.full_path)
+#     def isfile(self):
+#         return os.path.isfile(self.full_path)
 
 
-    def __repr__(self):
-        return path_item(\
-            os.path.join(self.full_path),
-            self.isdir(),
-            self.isfile(),
-            self.path_as_list,
-            self.segments,
-            self.invocation_depth,
-            os.path.join(self.full_directory),
-            self.current_directory,
-            self.stem,
-            self.suffix
-            )
+#     def __repr__(self):
+#         return path_item(\
+#             os.path.join(self.full_path),
+#             self.isdir(),
+#             self.isfile(),
+#             self.path_as_list,
+#             self.segments,
+#             self.invocation_depth,
+#             os.path.join(self.full_path),
+#             self.current_directory,
+#             self.stem,
+#             self.suffix
+#             )
 
 
-    def __str__(self):
-        return str(path_item(\
-            os.path.join(self.path_as_list),
-            self.isdir(),
-            self.isfile(),
-            self.path_as_list,
-            self.segments,
-            self.invocation_depth,
-            os.path.join(self.path_as_list),
-            self.current_directory,
-            self.stem,
-            self.suffix
-            ))
+#     def __str__(self):
+#         return str(path_item(\
+#             os.path.join(self.full_path),
+#             self.isdir(),
+#             self.isfile(),
+#             self.path_as_list,
+#             self.segments,
+#             self.invocation_depth,
+#             os.path.join(self.full_path),
+#             self.current_directory,
+#             self.stem,
+#             self.suffix
+#             ))
+
+
+# path_item = namedtuple('path_item', [
+#     'full_path', 
+#     'isdir',
+#     'isfile',
+#     'path_as_list', 
+#     'segments',
+#     'invocation_depth', 
+#     'full_directory',
+#     'current_directory', 
+#     'stem',
+#     'suffix'
+#    ])
 
 
 folderitem = namedtuple('folderitem', ['root_path', 'relative_path', 'files'])
-path_item = namedtuple('path_item', [
-    'full_path', 
-    'isdir',
-    'isfile',
-    'path_as_list', 
-    'segments',
-    'invocation_depth', 
-    'full_directory',
-    'current_directory', 
-    'stem',
-    'suffix'
-    ])
 rex = RuntimeExceptions()
 
 
@@ -167,7 +169,7 @@ def BLACKLIST_ACTIVE():
 
 
 def pause():
-    _ = input('press Enter...')
+    _ = input('(paused)  ')
 
 
 def quit(hold=False):
@@ -192,6 +194,8 @@ def locate_non_ascii(ascii_ified_text, original_text=None):
 
     It's not necessary to provide <original_text>
     """
+
+    # <pattern> matches \N{VERBOSE DESCRIPTION OF NON-ASCII CHARACTER}
     pattern = r"[\\][N](\{.*?\})"
     matches = re.finditer(pattern, ascii_ified_text)
     positions = []
@@ -199,7 +203,6 @@ def locate_non_ascii(ascii_ified_text, original_text=None):
     prior_end = 0
 
     # <match> is the verbose description of a non-ascii character
-
     for match in matches:
         descriptions.append(match.group(1))
         if positions:
@@ -218,38 +221,48 @@ def locate_non_ascii(ascii_ified_text, original_text=None):
     return positions, descriptions
 
 
-def ascii_encoding(some_path, path_depth, is_folder):
+def ascii_rule(path_to_test):
+
+
+    def ascii_test(user_string:str):
+        return user_string.encode(encoding='ascii', errors='namereplace').decode()
+
+
     positions = None
     descriptions = None
-    pobj = FileNameParser(some_path, path_depth)
-    if is_folder:
-        some_path = pobj.path_as_list[path_depth]
-    ascii_value = some_path.encode(encoding='ascii', errors='namereplace').decode()
-    if ascii_value != some_path:
+    ascii_value = ascii_test(path_to_test)
+    if ascii_value != path_to_test:
         positions, descriptions = locate_non_ascii(ascii_value)
-        print(str(pobj))
-        print(some_path)
-        print(positions, descriptions)
     return ascii_value, positions, descriptions
 
 
-def do_filename_rules(folder_item, path_depth, file_name, is_folder=False):
-    ascii_name, positions, descriptions = ascii_encoding(file_name, path_depth, is_folder)
-    if file_name != ascii_name:
+def do_name_rules(folder_item, path_depth, original_file_name, is_folder=False):
+    pobj = PathParser(os.path.join(folder_item.root_path,folder_item.relative_path,original_file_name), path_depth)
+    if is_folder:
+        ascii_name, positions, descriptions = ascii_rule(pobj.current_directory)
+    else:
+        ascii_name, positions, descriptions = ascii_rule(pobj.path_from_level(-1))
+    if original_file_name != ascii_name:
         rex.warnings = True
-        display_name = '\\'.join(os.path.join(folder_item.root_path,folder_item.relative_path,file_name).split('\\')[path_depth-1:])
-        # print(f'ascii fail: is_folder={is_folder} {file_name}')
-        # print(display_name)
+        display_name = pobj.path_from_level(path_depth)
+        print(f'failed ascii test: {original_file_name} --> {ascii_name}')
+        # pause()
         rex.add_path(display_name, path_depth, positions, descriptions, is_folder)
 
 
 def do_write_playlist(folder_group, path_depth, playlist_name):
     with open(playlist_name, 'w', encoding='utf-8') as f:
         for folder_item in folder_group:
-            folder_depth = len(playlist_name.split("\\"))
-            do_filename_rules(folder_item, path_depth, folder_item.root_path, is_folder=True)
+            pobj = PathParser(folder_item.root_path)
+            print(folder_item, path_depth, folder_item.root_path)
+            pause()
+            do_name_rules(pobj.current_directory, path_depth, is_folder=True)
+
+
+
+            # do_name_rules(folder_item, path_depth, folder_item.root_path, is_folder=True)
             for file_name in folder_item.files:
-                do_filename_rules(folder_item, path_depth, file_name)
+                do_name_rules(folder_item, path_depth, file_name)
                 if folder_item.relative_path and folder_item.relative_path != '\\':
                     relative_path_to_write = os.path.join(folder_item.relative_path, file_name)
                     f.write(f'{relative_path_to_write}\n')
@@ -259,21 +272,21 @@ def do_write_playlist(folder_group, path_depth, playlist_name):
 
 
 def do_folder_loop(folder_group, path_depth):
-    pobj = FileNameParser(folder_group[0].root_path, path_depth)
-    print(pobj)
+    pobj = PathParser(folder_group[0].root_path, path_depth)
+    # print(pobj)
 
     path_as_list = folder_group[0].root_path.split('\\') 
-    print(path_as_list)
+    # print(path_as_list)
 
     folder_name = path_as_list[-2]
-    print(folder_name)
+    # print(folder_name)
 
     playlist_name = os.path.join(folder_group[0].root_path, folder_name) + '.m3u'
-    print(playlist_name)
+    # print(playlist_name)
 
-    pause()
+    # pause()
     
-    display_name = '\\'.join(playlist_name.split('\\')[path_depth:])
+    display_name = pobj.path_from_level(path_depth)
     if len(display_name) > 100:
         display_name = display_name[:87] + '...' + display_name[-10:]
     print(f'{display_name}')
@@ -285,10 +298,16 @@ def write_playlist(playlist_path, complete_file_list):
     path_depth will be the index into (full path as list) where the 
     script was invoked
     """
-    path_depth = len(playlist_path.split('\\')) - 1
+    smh = playlist_path.split('\\')
+    path_depth = len(smh) - 1
+    # print(f'playlist_path: {playlist_path}')
+    # print(f'   ...as list: {smh}')
+    # print(f'path_depth   : {path_depth}')
+    # pause()
     print(f'\nWriting playlists...')
     for folder_group in complete_file_list:
         do_folder_loop(folder_group, path_depth)
+    print(f'\nDone writing playlists')
 
 
 def get_complete_file_list(files):
@@ -351,10 +370,9 @@ def main():
         files = get_folders(path_arg)
         complete_file_list = get_complete_file_list(files)
         write_playlist(path_arg, complete_file_list)
+        print(rex)
+    quit(hold=rex.errors or rex.warnings)
 
 
 if __name__ == '__main__':
     main()
-    print()
-    print(rex)
-    quit(hold=rex.errors or rex.warnings)
