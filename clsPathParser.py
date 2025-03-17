@@ -9,14 +9,12 @@ class PathParser():
         self.segments = len(self.path_as_list)
         self.invocation_depth = invocation_depth
         self.displayname = path.join(self.path_from_level(self.invocation_depth))
+        self.basename = path.basename(self.full_path)
         if self.isdir():
             self.current_directory = self.path_as_list[-1]
-            self.basename = path.basename(self.full_path)
             self.root, self.ext = '', ''
-            self.ext = ''
         else:
             self.current_directory = self.path_as_list[-2]
-            self.basename = path.basename(self.full_path)
             self.root, self.ext = path.splitext(self.basename)
 
 

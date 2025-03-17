@@ -79,82 +79,6 @@ class RuntimeExceptions():
         return tmp
 
 
-# class PathParser():
-
-
-#     def __init__(self, full_path, invocation_depth=None):
-#         self.full_path = full_path.replace('\\','/')
-#         self.path_as_list = self.full_path.split('/')
-#         self.segments = len(self.path_as_list)
-#         self.invocation_depth = invocation_depth
-#         self.full_directory = '/'.join(self.path_as_list[:self.segments-1])
-#         if self.isdir():
-#             self.current_directory = self.path_as_list[-2]
-#         else:
-#             self.current_directory = self.path_as_list[-1]
-#         self.stem, self.suffix = os.path.split(self.full_path)
-
-
-#     def path_from_level(self, level:int):
-#         return os.path.join(*self.path_as_list[level:])
-
-
-#     def path_to_level(self, level:int):
-#         return os.path.join(*self.path_as_list[:level])
-
-
-#     def isdir(self):
-#         return os.path.isdir(self.full_path)
-
-
-#     def isfile(self):
-#         return os.path.isfile(self.full_path)
-
-
-#     def __repr__(self):
-#         return path_item(\
-#             os.path.join(self.full_path),
-#             self.isdir(),
-#             self.isfile(),
-#             self.path_as_list,
-#             self.segments,
-#             self.invocation_depth,
-#             os.path.join(self.full_path),
-#             self.current_directory,
-#             self.stem,
-#             self.suffix
-#             )
-
-
-#     def __str__(self):
-#         return str(path_item(\
-#             os.path.join(self.full_path),
-#             self.isdir(),
-#             self.isfile(),
-#             self.path_as_list,
-#             self.segments,
-#             self.invocation_depth,
-#             os.path.join(self.full_path),
-#             self.current_directory,
-#             self.stem,
-#             self.suffix
-#             ))
-
-
-# path_item = namedtuple('path_item', [
-#     'full_path', 
-#     'isdir',
-#     'isfile',
-#     'path_as_list', 
-#     'segments',
-#     'invocation_depth', 
-#     'full_directory',
-#     'current_directory', 
-#     'stem',
-#     'suffix'
-#    ])
-
-
 folderitem = namedtuple('folderitem', ['root_path', 'relative_path', 'files'])
 rex = RuntimeExceptions()
 
@@ -236,33 +160,28 @@ def ascii_rule(path_to_test):
     return ascii_value, positions, descriptions
 
 
-def do_name_rules(folder_item, path_depth, original_file_name, is_folder=False):
-    pobj = PathParser(os.path.join(folder_item.root_path,folder_item.relative_path,original_file_name), path_depth)
-    if is_folder:
-        ascii_name, positions, descriptions = ascii_rule(pobj.current_directory)
+def do_name_rules(user_path:PathParser):
+    if user_path.isdir:
+        ascii_name, positions, descriptions = ascii_rule(user_path.current_directory)
     else:
-        ascii_name, positions, descriptions = ascii_rule(pobj.path_from_level(-1))
-    if original_file_name != ascii_name:
+        ascii_name, positions, descriptions = ascii_rule(user_path.path_from_level(-1))
+    if user_path.basename != ascii_name:
         rex.warnings = True
-        display_name = pobj.path_from_level(path_depth)
-        print(f'failed ascii test: {original_file_name} --> {ascii_name}')
-        # pause()
-        rex.add_path(display_name, path_depth, positions, descriptions, is_folder)
+        print(f'failed ascii test: {user_path.basename} --> {ascii_name}')
+        rex.add_path(user_path.displayname, user_path.invovation_depth, positions, descriptions, user_path.isdir)
 
 
 def do_write_playlist(folder_group, path_depth, playlist_name):
     with open(playlist_name, 'w', encoding='utf-8') as f:
         for folder_item in folder_group:
-            pobj = PathParser(folder_item.root_path)
-            print(folder_item, path_depth, folder_item.root_path)
-            pause()
-            do_name_rules(pobj.current_directory, path_depth, is_folder=True)
-
-
-
+            pobj = PathParser(folder_item.root_path, path_depth)
+            do_name_rules(pobj)
             # do_name_rules(folder_item, path_depth, folder_item.root_path, is_folder=True)
             for file_name in folder_item.files:
-                do_name_rules(folder_item, path_depth, file_name)
+                print(f'>>> {pobj}')
+                print(f'>>> {folder_item.files}')
+                fileobj = PathParser(file_name, path_depth)
+                do_name_rules(fileobj)
                 if folder_item.relative_path and folder_item.relative_path != '\\':
                     relative_path_to_write = os.path.join(folder_item.relative_path, file_name)
                     f.write(f'{relative_path_to_write}\n')
@@ -293,20 +212,19 @@ def do_folder_loop(folder_group, path_depth):
     do_write_playlist(folder_group, path_depth, playlist_name)
 
 
-def write_playlist(playlist_path, complete_file_list):
+def write_playlist(playlist_root_path, list_of_folder_items):
+
+    pobj = PathParser(playlist_root_path)
+
     """
     path_depth will be the index into (full path as list) where the 
     script was invoked
     """
-    smh = playlist_path.split('\\')
-    path_depth = len(smh) - 1
-    # print(f'playlist_path: {playlist_path}')
-    # print(f'   ...as list: {smh}')
-    # print(f'path_depth   : {path_depth}')
-    # pause()
-    print(f'\nWriting playlists...')
-    for folder_group in complete_file_list:
-        do_folder_loop(folder_group, path_depth)
+    path_depth = pobj.segments - 1
+
+    print(f'\nWriting playlists for {pobj.current_directory}')
+    for folder_item in list_of_folder_items:
+        do_folder_loop(folder_item, path_depth)
     print(f'\nDone writing playlists')
 
 
@@ -357,12 +275,13 @@ def main():
     if BLACKLIST_ACTIVE():
         print(f'\nExcluding file extensions {", ".join(sorted(blacklist()))}')
     try:
-        paths_args = argv[1:]
+        # paths_args = argv[1:]
+        paths_args = [r"\\NAS2021_4TB\music\10cc",r"\\NAS2021_4TB\music\A Killer’s Confession"]
         # paths_args = [r"\\NAS2021_4TB\music\Bulgarian"]
+        # paths_args = [r"\\NAS2021_4TB\music\Bulgarian\Bulgarian Voices Angelite & Huun-Huur-Tu, the"]
         # paths_args = [r"\\NAS2021_4TB\music\Classical"]
         # paths_args = [r"\\NAS2021_4TB\music\Classical\Giacomo Puccini"]
         # paths_args = [r"\\NAS2021_4TB\music\Wilco"]
-        # paths_args = [r"\\NAS2021_4TB\music\Bulgarian\Bulgarian Voices Angelite & Huun-Huur-Tu, the"]
     except IndexError as e:
         print(f'Syntax: MakePlaylist.py <folder|file>')
         quit()
