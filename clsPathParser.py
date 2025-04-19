@@ -44,8 +44,8 @@ class PathParser():
     def __repr__(self):
         return path_item(\
             path.join(*self.path_as_list),
-            self.isdir(),
-            self.isfile(),
+            self.isdir,
+            self.isfile,
             self.path_as_list,
             self.segments,
             self.invocation_depth,
@@ -59,8 +59,8 @@ class PathParser():
     def __str__(self):
         return str(path_item(\
             path.join(*self.path_as_list),
-            self.isdir(),
-            self.isfile(),
+            self.isdir,
+            self.isfile,
             self.path_as_list,
             self.segments,
             self.invocation_depth,

@@ -161,10 +161,14 @@ def ascii_rule(path_to_test):
 
 
 def do_name_rules(user_path:PathParser):
+    print(f'\n>>> user_path: {user_path}')
     if user_path.isdir:
+        print(f'>>> user_path.isdir: {user_path.isdir}')
         ascii_name, positions, descriptions = ascii_rule(user_path.current_directory)
     else:
-        ascii_name, positions, descriptions = ascii_rule(user_path.path_from_level(-1))
+        print(f'>>> basename: {user_path.basename}')
+        ascii_name, positions, descriptions = ascii_rule(user_path.basename)
+        # ascii_name, positions, descriptions = ascii_rule(user_path.path_from_level(-1))
     if user_path.basename != ascii_name:
         rex.warnings = True
         print(f'failed ascii test: {user_path.basename} --> {ascii_name}')
@@ -276,7 +280,8 @@ def main():
     if BLACKLIST_ACTIVE():
         print(f'\nExcluding file extensions {", ".join(sorted(blacklist()))}')
     try:
-        paths_args = argv[1:]
+        # paths_args = argv[1:]
+        paths_args = [r"\\NAS2021_4TB\music\She & Him\Volume Two"]
         # paths_args = [r"\\NAS2021_4TB\music\10cc",r"\\NAS2021_4TB\music\A Killer’s Confession"]
         # paths_args = [r"\\NAS2021_4TB\music\Bulgarian"]   
         # paths_args = [r"\\NAS2021_4TB\music\Bulgarian\Bulgarian Voices Angelite & Huun-Huur-Tu, the"]
