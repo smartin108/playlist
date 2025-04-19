@@ -168,7 +168,7 @@ def do_name_rules(user_path:PathParser):
     if user_path.basename != ascii_name:
         rex.warnings = True
         print(f'failed ascii test: {user_path.basename} --> {ascii_name}')
-        rex.add_path(user_path.displayname, user_path.invovation_depth, positions, descriptions, user_path.isdir)
+        rex.add_path(user_path.displayname, user_path.invocation_depth, positions, descriptions, user_path.isdir)
 
 
 def do_write_playlist(folder_group, path_depth, playlist_name):
@@ -178,8 +178,9 @@ def do_write_playlist(folder_group, path_depth, playlist_name):
             do_name_rules(pobj)
             # do_name_rules(folder_item, path_depth, folder_item.root_path, is_folder=True)
             for file_name in folder_item.files:
-                print(f'>>> {pobj}')
-                print(f'>>> {folder_item.files}')
+                # print(f'>>> {pobj}')
+                # print(f'>>> {folder_item.files}')
+                # print(f'>>> {file_name}, {path_depth}')
                 fileobj = PathParser(file_name, path_depth)
                 do_name_rules(fileobj)
                 if folder_item.relative_path and folder_item.relative_path != '\\':
@@ -275,9 +276,9 @@ def main():
     if BLACKLIST_ACTIVE():
         print(f'\nExcluding file extensions {", ".join(sorted(blacklist()))}')
     try:
-        # paths_args = argv[1:]
-        paths_args = [r"\\NAS2021_4TB\music\10cc",r"\\NAS2021_4TB\music\A Killer’s Confession"]
-        # paths_args = [r"\\NAS2021_4TB\music\Bulgarian"]
+        paths_args = argv[1:]
+        # paths_args = [r"\\NAS2021_4TB\music\10cc",r"\\NAS2021_4TB\music\A Killer’s Confession"]
+        # paths_args = [r"\\NAS2021_4TB\music\Bulgarian"]   
         # paths_args = [r"\\NAS2021_4TB\music\Bulgarian\Bulgarian Voices Angelite & Huun-Huur-Tu, the"]
         # paths_args = [r"\\NAS2021_4TB\music\Classical"]
         # paths_args = [r"\\NAS2021_4TB\music\Classical\Giacomo Puccini"]

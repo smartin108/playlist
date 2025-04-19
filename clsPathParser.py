@@ -10,16 +10,23 @@ class PathParser():
         self.invocation_depth = invocation_depth
         self.displayname = path.join(self.path_from_level(self.invocation_depth))
         self.basename = path.basename(self.full_path)
+        # print(f'>>> {self.full_path}')
         if self.isdir():
             self.current_directory = self.path_as_list[-1]
             self.root, self.ext = '', ''
-        else:
+        elif self.segments > 1:
             self.current_directory = self.path_as_list[-2]
+            self.root, self.ext = path.splitext(self.basename)
+        else:
+            self.current_directory = ''
             self.root, self.ext = path.splitext(self.basename)
 
 
     def path_from_level(self, level:int):
-        return path.join(*self.path_as_list[level:])
+        if level == self.invocation_depth:
+            return self.path_as_list[-1]
+        else:
+            return path.join(*self.path_as_list[level:])
 
 
     def path_to_level(self, level:int):
