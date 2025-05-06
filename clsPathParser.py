@@ -41,34 +41,23 @@ class PathParser():
         return path.isfile(self.full_path)
 
 
-    def __repr__(self):
-        return path_item(\
-            path.join(*self.path_as_list),
-            self.isdir,
-            self.isfile,
-            self.path_as_list,
-            self.segments,
-            self.invocation_depth,
-            self.displayname,
-            self.current_directory,
-            self.basename,
-            self.ext
-            )
+    # def __repr__(self):
+    #     return str(path_item(\
+    #         path.join(*self.path_as_list),
+    #         self.isdir,
+    #         self.isfile,
+    #         self.path_as_list,
+    #         self.segments,
+    #         self.invocation_depth,
+    #         self.displayname,
+    #         self.current_directory,
+    #         self.basename,
+    #         self.ext
+    #         ))
 
 
-    def __str__(self):
-        return str(path_item(\
-            path.join(*self.path_as_list),
-            self.isdir,
-            self.isfile,
-            self.path_as_list,
-            self.segments,
-            self.invocation_depth,
-            self.displayname,
-            self.current_directory,
-            self.basename,
-            self.ext
-            ))
+    # def __str__(self):
+    #     pass
 
 
 path_item = namedtuple('path_item', [

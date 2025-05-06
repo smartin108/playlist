@@ -84,7 +84,7 @@ rex = RuntimeExceptions()
 
 
 def blacklist():
-    return ['.m3u','.txt','.nfo','.jpg','.jpeg','.png','.gif','.report','.db','.doc']
+    return ['.m3u','.txt','.nfo','.jpg','.jpeg','.png','.gif','.report','.db','.doc','.csv']
 
 
 def BLACKLIST_ACTIVE():
@@ -161,17 +161,19 @@ def ascii_rule(path_to_test):
 
 
 def do_name_rules(user_path:PathParser):
-    print(f'\n>>> user_path: {user_path}')
+    # if user_path:
+    #     print(f'\n>>> user_path: {user_path}')
     if user_path.isdir:
-        print(f'>>> user_path.isdir: {user_path.isdir}')
+        # print(f'>>> user_path.isdir: {user_path.isdir}')
         ascii_name, positions, descriptions = ascii_rule(user_path.current_directory)
     else:
-        print(f'>>> basename: {user_path.basename}')
+        # print(f'>>> basename: {user_path.basename}')
         ascii_name, positions, descriptions = ascii_rule(user_path.basename)
         # ascii_name, positions, descriptions = ascii_rule(user_path.path_from_level(-1))
     if user_path.basename != ascii_name:
         rex.warnings = True
-        print(f'failed ascii test: {user_path.basename} --> {ascii_name}')
+        # the logic is not workling correctly atm, so suppressing the print
+        # print(f'failed ascii test: {user_path.basename} --> {ascii_name}')
         rex.add_path(user_path.displayname, user_path.invocation_depth, positions, descriptions, user_path.isdir)
 
 
@@ -213,7 +215,7 @@ def do_folder_loop(folder_group, path_depth):
     display_name = pobj.path_from_level(path_depth)
     if len(display_name) > 100:
         display_name = display_name[:87] + '...' + display_name[-10:]
-    print(f'{display_name}')
+    # print(f'{display_name}')
     do_write_playlist(folder_group, path_depth, playlist_name)
 
 
@@ -280,8 +282,8 @@ def main():
     if BLACKLIST_ACTIVE():
         print(f'\nExcluding file extensions {", ".join(sorted(blacklist()))}')
     try:
-        # paths_args = argv[1:]
-        paths_args = [r"\\NAS2021_4TB\music\She & Him\Volume Two"]
+        paths_args = argv[1:]
+        # paths_args = [r"\\NAS2021_4TB\music\She & Him\Volume Two"]
         # paths_args = [r"\\NAS2021_4TB\music\10cc",r"\\NAS2021_4TB\music\A Killer’s Confession"]
         # paths_args = [r"\\NAS2021_4TB\music\Bulgarian"]   
         # paths_args = [r"\\NAS2021_4TB\music\Bulgarian\Bulgarian Voices Angelite & Huun-Huur-Tu, the"]
@@ -295,7 +297,7 @@ def main():
         files = get_folders(path_arg)
         complete_file_list = get_complete_file_list(files)
         write_playlist(path_arg, complete_file_list)
-        print(rex)
+        # print(rex)
     quit(hold=rex.errors or rex.warnings)
 
 
