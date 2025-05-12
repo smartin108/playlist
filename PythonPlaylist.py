@@ -298,7 +298,8 @@ def main():
         complete_file_list = get_complete_file_list(files)
         write_playlist(path_arg, complete_file_list)
         # print(rex)
-    quit(hold=rex.errors or rex.warnings)
+    quit()
+    # quit(hold=rex.errors or rex.warnings)
 
 
 if __name__ == '__main__':
